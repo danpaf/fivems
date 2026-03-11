@@ -1,0 +1,97 @@
+name: Build SolarProject
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  build-server:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout FiveM with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install Windows SDK 10.0.22000.0
+        shell: pwsh
+        run: |
+          $url = "https://go.microsoft.com/fwlink/?linkid=2164145"
+          $installer = "$env:TEMP\winsdksetup.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -Wait -FilePath $installer -ArgumentList "/features OptionId.DesktopCPPx64 /quiet /norestart"
+          Write-Host "Windows SDK 10.0.22000.0 installed"
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Generate server project
+        working-directory: code
+        run: tools\ci\premake5.exe vs2022 --game=server
+
+      - name: Build server
+        working-directory: code
+        run: msbuild build\server\windows\CitizenMP.sln /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+
+      - name: Package server
+        run: |
+          mkdir SolarServer
+          copy code\build\server\windows\bin\Release\*.exe SolarServer\
+          copy code\build\server\windows\bin\Release\*.dll SolarServer\
+          copy data\server_minimal\components.json SolarServer\
+          copy data\server_minimal\server.cfg SolarServer\
+          copy data\server_minimal\launch_server.bat SolarServer\
+          if exist data\server\citizen xcopy /E /I data\server\citizen SolarServer\citizen
+
+      - name: Upload server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SolarServer
+          path: SolarServer/
+
+  build-client:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout FiveM with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install Windows SDK 10.0.22000.0
+        shell: pwsh
+        run: |
+          $url = "https://go.microsoft.com/fwlink/?linkid=2164145"
+          $installer = "$env:TEMP\winsdksetup.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -Wait -FilePath $installer -ArgumentList "/features OptionId.DesktopCPPx64 /quiet /norestart"
+          Write-Host "Windows SDK 10.0.22000.0 installed"
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Generate client project
+        working-directory: code
+        run: tools\ci\premake5.exe vs2022 --game=five
+
+      - name: Build client
+        working-directory: code
+        run: msbuild build\five\CitizenMP.sln /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+
+      - name: Package client
+        run: |
+          mkdir SolarProject
+          copy code\build\five\bin\Release\*.exe SolarProject\
+          copy code\build\five\bin\Release\*.dll SolarProject\
+          copy data\client_minimal\components.json SolarProject\
+          copy data\client_minimal\launch_client.bat SolarProject\
+          echo. > SolarProject\SolarProject.exe.formaldev
+          if exist data\client\citizen xcopy /E /I data\client\citizen SolarProject\citizen
+
+      - name: Upload client artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SolarProject-Client
+          path: SolarProject/
