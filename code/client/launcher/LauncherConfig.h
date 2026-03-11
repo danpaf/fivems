@@ -24,10 +24,10 @@
 #define GAME_EXECUTABLE L"MaxPayne3.exe"
 #elif defined(GTA_FIVE)
 #define PRODUCT_ID CfxState::ProductID::FIVEM
-#define PRODUCT_NAME L"FiveM"
+#define PRODUCT_NAME L"SolarProject"
 #define GAME_EXECUTABLE L"GTA5.exe"
-#define CONTENT_NAME "fivereborn"
-#define LINK_PROTOCOL L"fivem"
+#define CONTENT_NAME "solarproject"
+#define LINK_PROTOCOL L"solarproject"
 #elif defined(IS_RDR3)
 #define PRODUCT_ID CfxState::ProductID::REDM
 #define PRODUCT_NAME L"RedM"
@@ -35,11 +35,11 @@
 #define GAME_EXECUTABLE L"RDR2.exe"
 #define LINK_PROTOCOL L"redm"
 #elif defined(IS_LAUNCHER)
-#define PRODUCT_NAME L"Cfx.re Launcher"
+#define PRODUCT_NAME L"SolarProject Launcher"
 #define GAME_EXECUTABLE L"DUMMY.exe"
 #define CONTENT_NAME "launcher"
 #else
-#define PRODUCT_NAME L"Unknown CitizenFX Game"
+#define PRODUCT_NAME L"Unknown SolarProject Game"
 #define GAME_EXECUTABLE L"Game.exe"
 #define CONTENT_NAME "unk"
 #endif

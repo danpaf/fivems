@@ -410,7 +410,7 @@ static void OverloadCrashData(TASKDIALOGCONFIG* config)
 	if (blame)
 	{
 		static std::wstring errTitle = fmt::sprintf(L"%s encountered an error", blame);
-		static std::wstring errDescription = fmt::sprintf(L"FiveM crashed due to %s.\n%s", blame, blame_two);
+		static std::wstring errDescription = fmt::sprintf(L"SolarProject crashed due to %s.\n%s", blame, blame_two);
 
 		config->pszMainInstruction = errTitle.c_str();
 		config->pszContent = errDescription.c_str();
@@ -638,7 +638,7 @@ static void GatherCrashInformation()
 			OleFlushClipboard();
 
 			// open message box
-			MessageBoxW(NULL, va(L"Saved the crash dump as %s. Please upload the .zip file when you're asking for support. (copy/paste to upload)", tempDir), L"CitizenFX", MB_OK | MB_ICONINFORMATION);
+			MessageBoxW(NULL, va(L"Saved the crash dump as %s. Please upload the .zip file when you're asking for support. (copy/paste to upload)", tempDir), L"SolarProject", MB_OK | MB_ICONINFORMATION);
 
 			// open Explorer with the file selected
 			STARTUPINFOW si = { 0 };

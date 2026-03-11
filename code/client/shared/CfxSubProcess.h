@@ -27,7 +27,7 @@ inline const wchar_t* MakeCfxSubProcess(const std::wstring& processType, const s
 
 	if (!origin.empty())
 	{
-		auto sub = MakeRelativeCitPath(fmt::sprintf(L"CitizenFX_SubProcess_%s.bin", origin));
+		auto sub = MakeRelativeCitPath(fmt::sprintf(L"SolarProject_SubProcess_%s.bin", origin));
 
 		if (GetFileAttributesW(sub.c_str()) != INVALID_FILE_ATTRIBUTES)
 		{
@@ -51,9 +51,9 @@ inline const wchar_t* MakeCfxSubProcess(const std::wstring& processType, const s
 #ifdef IS_LAUNCHER
 	productName = L"CGL_";
 #elif defined(GTA_FIVE)
-	productName = L"FiveM_";
+	productName = L"SolarProject_";
 #elif defined(IS_FXSERVER)
-	productName = L"FXS_";
+	productName = L"SolarS_";
 #elif defined(IS_RDR3)
 	productName = L"RedM_";
 #elif defined(GTA_NY)

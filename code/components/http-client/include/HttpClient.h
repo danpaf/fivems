@@ -100,7 +100,7 @@ using ManualHttpRequestPtr = std::shared_ptr<ManualHttpRequestHandle>;
 class HTTP_EXPORT HttpClient final
 {
 public:
-	HttpClient(const wchar_t* userAgent = L"CitizenFX/1", const std::string& loopId = {});
+	HttpClient(const wchar_t* userAgent = L"SolarProject/1", const std::string& loopId = {});
 	virtual ~HttpClient();
 
 	std::string BuildPostString(const std::map<std::string, std::string>& fields);

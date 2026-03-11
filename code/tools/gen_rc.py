@@ -31,21 +31,21 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "Cfx.re"
+            VALUE "CompanyName", "SolarProject"
 #if defined(GTA_FIVE)
-			VALUE "FileDescription", "{1} for FiveM"
+			VALUE "FileDescription", "{1} for SolarProject"
 #elif defined(IS_RDR3)
-			VALUE "FileDescription", "{1} for RedM"
+			VALUE "FileDescription", "{1} for SolarProject RDR"
 #elif defined(IS_FXSERVER)
-			VALUE "FileDescription", "{1} for FXServer"
+			VALUE "FileDescription", "{1} for SolarServer"
 #else
-			VALUE "FileDescription", "{1} for CitizenFX"
+			VALUE "FileDescription", "{1} for SolarProject"
 #endif
             VALUE "FileVersion", "1.0.0.{0}"
             VALUE "InternalName", "{1}"
-            VALUE "LegalCopyright", "(C) 2015- CitizenFX Collective"
+            VALUE "LegalCopyright", "(C) 2024-2026 SolarProject"
             VALUE "OriginalFilename", "{1}.dll"
-            VALUE "ProductName", "CitizenFX"
+            VALUE "ProductName", "SolarProject"
             VALUE "ProductVersion", "1.0.0.{0}"
         END
     END

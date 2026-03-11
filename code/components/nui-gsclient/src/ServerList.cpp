@@ -38,7 +38,7 @@
 #elif defined(GTA_FIVE)
 #define GS_GAMENAME "GTA5"
 #else
-#define GS_GAMENAME "CitizenFX"
+#define GS_GAMENAME "SolarProject"
 #endif
 
 template<typename TFunc>

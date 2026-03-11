@@ -311,8 +311,8 @@ static void LoadObjectsNowWrap(void* streaming, bool a2)
 		if (Instance<ICoreGameInit>::Get()->GetGameLoaded())
 		{
 			trace("---------------- IF YOU CAN NOT FIX IT AND THIS OCCURS DURING GAMEPLAY\n");
-			trace("---------------- PLEASE CONTACT THE FIVEM DEVELOPERS ON https://forum.fivem.net/\n");
-			trace("---------------- WITH THIS CITIZENFX.LOG FILE\n");
+			trace("---------------- PLEASE REPORT THIS ISSUE TO SOLARPROJECT DEVELOPERS\n");
+			trace("---------------- WITH THIS SOLARPROJECT.LOG FILE\n");
 			trace("---------------- \n");
 			trace("---------------- THIS BLOCKING LOAD _WILL_ CAUSE CLIENT GAME CRASHES\n");
 		}

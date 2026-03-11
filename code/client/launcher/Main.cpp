@@ -352,10 +352,10 @@ int RealMain()
 	{
 		auto regPath = MakeRelativeCitPath(L"");
 
-		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\CitizenFX\\" PRODUCT_NAME, L"Last Run Location", REG_SZ, regPath.c_str(), (regPath.size() + 1) * 2);
+		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\SolarProject\\" PRODUCT_NAME, L"Last Run Location", REG_SZ, regPath.c_str(), (regPath.size() + 1) * 2);
 	}
 
-	SetCurrentProcessExplicitAppUserModelID(va(L"CitizenFX.%s.%s", PRODUCT_NAME, launch::IsSDK() ? L"SDK" : L"Client"));
+	SetCurrentProcessExplicitAppUserModelID(va(L"SolarProject.%s.%s", PRODUCT_NAME, launch::IsSDK() ? L"SDK" : L"Client"));
 
 #ifdef IS_LAUNCHER
 	initState->isReverseGame = true;
@@ -653,17 +653,17 @@ int RealMain()
 		}
 #endif
 
-		if (OpenMutex(SYNCHRONIZE, FALSE, L"CitizenFX_LogMutex") == nullptr)
+		if (OpenMutex(SYNCHRONIZE, FALSE, L"SolarProject_LogMutex") == nullptr)
 		{
 			// create the mutex
-			CreateMutex(nullptr, TRUE, L"CitizenFX_LogMutex");
+			CreateMutex(nullptr, TRUE, L"SolarProject_LogMutex");
 
 			// rotate any CitizenFX.log files cleanly
 			const int MaxLogs = 10;
 
 			auto makeLogName = [](int idx)
 			{
-				return MakeRelativeCitPath(va(L"CitizenFX.log%s", (idx == 0) ? L"" : va(L".%d", idx)));
+				return MakeRelativeCitPath(va(L"SolarProject.log%s", (idx == 0) ? L"" : va(L".%d", idx)));
 			};
 
 			for (int i = (MaxLogs - 1); i >= 0; i--)
@@ -685,7 +685,7 @@ int RealMain()
 			// also do checks here to complain at BAD USERS
 			if (!GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetThreadDescription")) // kernel32 forwarder only got this export in 1703, kernelbase.dll got this in 1607.
 			{
-				std::wstring fpath = MakeRelativeCitPath(L"CitizenFX.ini");
+				std::wstring fpath = MakeRelativeCitPath(L"SolarProject.ini");
 
 				bool showOSWarning = true;
 
@@ -810,8 +810,8 @@ int RealMain()
 
 	auto minModeManifest = InitMinMode();
 
-	g_uiExitEvent = CreateEventW(NULL, TRUE, FALSE, va(L"CitizenFX_PreUIExit%s", IsCL2() ? L"CL2" : L""));
-	g_uiDoneEvent = CreateEventW(NULL, FALSE, FALSE, va(L"CitizenFX_PreUIDone%s", IsCL2() ? L"CL2" : L""));
+	g_uiExitEvent = CreateEventW(NULL, TRUE, FALSE, va(L"SolarProject_PreUIExit%s", IsCL2() ? L"CL2" : L""));
+	g_uiDoneEvent = CreateEventW(NULL, FALSE, FALSE, va(L"SolarProject_PreUIDone%s", IsCL2() ? L"CL2" : L""));
 
 	if (initState->IsMasterProcess() && !toolMode && !launch::IsSDK())
 	{

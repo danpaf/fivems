@@ -216,7 +216,7 @@ local function launcherpersonality_inner(name)
 			targetname "CitizenPayne"
 
 		filter { "options:game=five" }
-			targetname "FiveM"
+			targetname "SolarProject"
 			
 		filter { "options:game=launcher" }
 			targetname "CfxLauncher"
@@ -224,7 +224,7 @@ local function launcherpersonality_inner(name)
 		filter {}
 			
 		if name ~= 'main' then
-			targetname("CitizenFX_SubProcess_" .. subprocessName)
+			targetname("SolarProject_SubProcess_" .. subprocessName)
 		end
 		
 		linkoptions "/IGNORE:4254 /LARGEADDRESSAWARE" -- 4254 is the section type warning we tend to get

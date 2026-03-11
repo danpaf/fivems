@@ -33,7 +33,7 @@ static void SetAumid(const WRL::ComPtr<IShellLink>& link, const std::wstring& cu
 	if (SUCCEEDED(link.As(&propertyStore)))
 	{
 		PROPVARIANT pv;
-		if (SUCCEEDED(InitPropVariantFromString((!custom.empty() ? custom.c_str() : L"CitizenFX." PRODUCT_NAME L".Client"), &pv)))
+		if (SUCCEEDED(InitPropVariantFromString((!custom.empty() ? custom.c_str() : L"SolarProject." PRODUCT_NAME L".Client"), &pv)))
 		{
 			propertyStore->SetValue(PKEY_AppUserModel_ID, pv);
 

@@ -30,8 +30,8 @@ newoption {
 local PROGRAM_DETAILS = {
 	['server']  = { publicName = 'Server',   cSharp = { nativesFile = 'NativesServer.cs', gameFiles = 'Server/*.cs' } },
 	
-	['five']    = { publicName = 'FiveM',    cSharp = { nativesFile = 'NativesFive.cs',   gameFiles = 'Client/FiveM/**.cs' } },
-	['fivem']   = { publicName = 'FiveM',    cSharp = { nativesFile = 'NativesFive.cs',   gameFiles = 'Client/FiveM/**.cs' } },
+	['five']    = { publicName = 'SolarProject', cSharp = { nativesFile = 'NativesFive.cs',   gameFiles = 'Client/FiveM/**.cs' } },
+	['fivem']   = { publicName = 'SolarProject', cSharp = { nativesFile = 'NativesFive.cs',   gameFiles = 'Client/FiveM/**.cs' } },
 	
 	['rdr3']    = { publicName = 'RedM',     cSharp = { nativesFile = 'NativesRDR3.cs',   gameFiles = 'Client/RedM/*.cs' } },
 	['ny']      = { publicName = 'LibertyM', cSharp = { nativesFile = 'NativesNY.cs',     gameFiles = 'Client/LibertyM/*.cs' } },

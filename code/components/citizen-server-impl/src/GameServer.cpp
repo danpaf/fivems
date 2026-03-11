@@ -25,7 +25,8 @@
 
 #include <HttpClient.h>
 #include <TcpListenManager.h>
-#include <ServerLicensingComponent.h>
+// MINIMAL_MP: ServerLicensing removed - no master server registration
+// #include <ServerLicensingComponent.h>
 
 #include <json.hpp>
 
@@ -963,115 +964,9 @@ namespace fx
 			}
 		}
 
-		// if we should heartbeat
-		if (msec() >= m_nextHeartbeatTime)
-		{
-			auto sendHttpHeartbeat = [this](std::string_view masterName, bool isPrivate)
-			{
-				auto var = m_instance->GetComponent<console::Context>()->GetVariableManager()->FindEntryRaw("sv_licenseKeyToken");
-
-				if (var && !var->GetValue().empty())
-				{
-					console::DPrintf("citizen-server-impl", "Sending heartbeat to %s\n", masterName);
-
-					nlohmann::json playersJson, infoJson, dynamicJson;
-					auto ihh = m_instance->GetComponent<InfoHttpHandlerComponent>();
-					ihh->GetJsonData(&infoJson, &dynamicJson, &playersJson);
-
-					auto json = nlohmann::json::object({
-						{ "port", m_instance->GetComponent<fx::TcpListenManager>()->GetPrimaryPort() },
-						{ "listingToken", m_instance->GetComponent<ServerLicensingComponent>()->GetListingToken() },
-						{ "ipOverride", m_listingIpOverride->GetValue() },
-						{ "forceIndirectListing", m_forceIndirectListing->GetValue() },
-						{ "private", isPrivate },
-						{ "fallbackData", nlohmann::json::object({
-							{ "players", playersJson },
-							{ "info", infoJson },
-							{ "dynamic", dynamicJson },
-						})}
-					});
-
-					if (!m_listingHostOverride->GetValue().empty())
-					{
-						json["hostOverride"] = m_listingHostOverride->GetValue();
-					}
-
-					HttpRequestOptions ro;
-					ro.ipv4 = true;
-					ro.headers = std::map<std::string, std::string>{
-						{ "Content-Type", "application/json; charset=utf-8" }
-					};
-					ro.addErrorBody = true;
-
-					static bool firstRun = true;
-
-					Instance<HttpClient>::Get()->DoPostRequest(std::string{ masterName }, json.dump(), ro, [](bool success, const char* d, size_t s)
-					{
-						if (!success)
-						{
-							console::DPrintf("citizen-server-impl", "error submitting to ingress: %s\n", std::string{ d, s });
-							return;
-						}
-
-						try
-						{
-							// don't return a query error for the first run (may be residual)
-							if (!firstRun)
-							{
-								auto j = nlohmann::json::parse(d, d + s);
-								if (j.is_object() && j.contains("lastError"))
-								{
-									auto lastError = j["lastError"].get<std::string>();
-									console::Printf("citizen-server-impl", "^1Server list query returned an error: %s^7\n", lastError.substr(0, lastError.find_first_of("\r\n")));
-								}
-							}
-						}
-						catch (...)
-						{
-						}
-
-						firstRun = false;
-					});
-				}
-			};
-
-			bool isPrivate = true;
-
-			// loop through each master
-			for (auto& master : m_masters)
-			{
-				// if the master is set
-				std::string masterName = master->GetValue();
-
-				if (!masterName.empty())
-				{
-					if (masterName.find("https://") != 0 && masterName.find("http://") != 0)
-					{
-						// find a cached address
-						auto it = m_masterCache.find(masterName);
-
-						if (it != m_masterCache.end())
-						{
-							// send a heartbeat to the master
-							SendOutOfBand(it->second, "heartbeat DarkPlaces\n");
-
-							console::DPrintf("citizen:server:impl", "Sending (old style) heartbeat to %s\n", masterName);
-						}
-					}
-					else if (masterName != kDefaultServerList)
-					{
-						sendHttpHeartbeat(masterName, isPrivate);
-					}
-					else
-					{
-						isPrivate = false;
-					}
-				}
-			}
-
-			sendHttpHeartbeat(kDefaultServerList, isPrivate);
-			m_nextHeartbeatTime = msec() + 3min;
-		}
+		// MINIMAL_MP: Heartbeat to master servers disabled.
+		// No server list registration - this is a private/LAN server.
+		// Original code sent HTTP POST to servers-frontend.fivem.net every 3min.
 
 		{
 			auto ctx = GetInstance()->GetComponent<console::Context>();

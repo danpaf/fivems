@@ -44,13 +44,13 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "Cfx.re"
-			VALUE "FileDescription", "Cfx.re Platform Server (FXServer)"
+            VALUE "CompanyName", "SolarProject"
+			VALUE "FileDescription", "SolarProject Server"
             VALUE "FileVersion", "1.0.0.0"
-            VALUE "InternalName", "Citizen"
-            VALUE "LegalCopyright", "(C) 2017-2020 Cfx.re"
-            VALUE "OriginalFilename", "FXServer.exe"
-            VALUE "ProductName", "CitizenFX"
+            VALUE "InternalName", "SolarServer"
+            VALUE "LegalCopyright", "(C) 2024-2026 SolarProject"
+            VALUE "OriginalFilename", "SolarServer.exe"
+            VALUE "ProductName", "SolarProject"
             VALUE "ProductVersion", "1.0.0.0"
         END
     END

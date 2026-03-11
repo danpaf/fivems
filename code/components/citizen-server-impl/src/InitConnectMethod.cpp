@@ -17,11 +17,12 @@
 
 #include <IteratorView.h>
 
-#include <botan/base64.h>
-#include <botan/sha160.h>
-#include <botan/pubkey.h>
-#include <botan/rsa.h>
-#include <botan/ber_dec.h>
+// MINIMAL_MP: Botan removed - no ticket verification needed for LAN mode
+// #include <botan/base64.h>
+// #include <botan/sha160.h>
+// #include <botan/pubkey.h>
+// #include <botan/rsa.h>
+// #include <botan/ber_dec.h>
 
 #include <ctime>
 
@@ -29,22 +30,17 @@
 
 #include <ServerIdentityProvider.h>
 
-#include <MonoThreadAttachment.h>
+// MINIMAL_MP: Mono not needed
+// #include <MonoThreadAttachment.h>
 #include <GameBuilds.h>
 #include <CrossBuildRuntime.h>
 #include <PoolSizesState.h>
 
 #include <json.hpp>
 
-#define FOLLY_NO_CONFIG
-
-#ifdef _WIN32
-#undef ssize_t
-#else
-#include <sys/types.h>
-#endif
-
-#include <folly/String.h>
+// MINIMAL_MP: folly removed
+// #define FOLLY_NO_CONFIG
+// #include <folly/String.h>
 #include <boost/algorithm/string.hpp>
 
 #include <utf8.h>
@@ -69,312 +65,15 @@ void RegisterServerIdentityProvider(ServerIdentityProviderBase* provider)
 }
 }
 
+// MINIMAL_MP: All Botan ticket verification removed.
+// In minimal mode, we always operate as LAN server (no ticket verification).
 namespace
 {
-std::mutex g_publicKeyMutex;
-std::optional<Botan::RSA_PublicKey> g_publicKey {};
-std::chrono::milliseconds g_publicKeyCreation {};
-
-/// <summary>
-/// Expires the public key.
-/// </summary>
-/// <returns>Returns true if the key is expired, false if the key creation was less then 5 minutes ago.</returns>
-bool ExpirePublicKey()
-{
-	std::unique_lock lock(g_publicKeyMutex);
-	// only expire the public key if the key is older than 5 minutes
-	if (msec() - g_publicKeyCreation > std::chrono::minutes(5))
-	{
-		g_publicKey.reset();
-		return true;
-	}
-
-	return false;
-}
-
-/// <summary>
-/// Requests the public key. If the key is already present, the function returns the key. Otherwise, the key is requested from the server.
-/// </summary>
-/// <returns>Returns an optional RSA public key.</returns>
-std::optional<Botan::RSA_PublicKey> GetPublicKey()
-{
-	static std::condition_variable requestCv;
-	static std::atomic requestInProgress(false);
-
-	// lock token access
-	std::unique_lock lock(g_publicKeyMutex);
-
-	if (g_publicKey.has_value())
-	{
-		// token already present
-		return g_publicKey;
-	}
-
-	// only one request at the same time
-	bool notInProgress = false;
-	if (requestInProgress.compare_exchange_strong(notInProgress, true))
-	{
-		// http get request for loading the token
-		Instance<HttpClient>::Get()->DoGetRequest(CNL_ENDPOINT "api/ticket/pubkey", [](bool success, const char* data, size_t length) {
-			// lock to synchronize threads awaiting the token
-			bool inProgress = true;
-			if (!requestInProgress.compare_exchange_strong(inProgress, false))
-			{
-				// already finished, invalid state should not happen
-				return;
-			}
-
-			// lock token access
-			std::unique_lock lock(g_publicKeyMutex);
-
-			if (success)
-			{
-				success = false;
-				try
-				{
-					json jsonData = json::parse(data, data + length);
-					if (jsonData.contains("key") && jsonData["key"].is_string())
-					{
-						auto publicKeyData = Botan::base64_decode(jsonData["key"]);
-
-						Botan::BigInt n, e;
-						Botan::BER_Decoder(publicKeyData)
-							.start_cons(Botan::SEQUENCE)
-							.decode(n)
-							.decode(e)
-							.end_cons();
-
-						g_publicKey = Botan::RSA_PublicKey(n, e);
-						g_publicKeyCreation = msec();
-						success = true;
-					}
-				}
-				catch (std::exception& e)
-				{
-					trace("exception while processing public key information call: %s\n", e.what());
-				}
-			}
-
-			if (!success)
-			{
-				g_publicKey.reset();
-			}
-
-			requestCv.notify_all();
-		});
-	}
-
-	// unlock token mutex and wait till request is done
-	requestCv.wait(lock, [] { return !requestInProgress; });
-	return g_publicKey;
-}
-
-std::mutex g_ticketMapMutex;
-std::unordered_set<std::tuple<uint64_t, uint64_t>> g_ticketList;
-std::chrono::milliseconds g_nextTicketGc;
-
-enum class VerifyTicketResult
-{
-	InvalidLength,
-	InvalidLength2,
-	Expired,
-	MismatchingGUID,
-	Reused,
-	InvalidSignatureLength,
-	InvalidSignature,
-	Success,
-};
-
-std::string GetVerifyTicketErrorString(VerifyTicketResult result)
-{
-	switch (result)
-	{
-		case VerifyTicketResult::InvalidLength:
-			return "Invalid ticket length.";
-		case VerifyTicketResult::InvalidLength2:
-			return "Invalid ticket length. (2)";
-		case VerifyTicketResult::Expired:
-			return "Ticket expired. Please check your server's system time.";
-		case VerifyTicketResult::MismatchingGUID:
-			return "Mismatching GUID.";
-		case VerifyTicketResult::Reused:
-			return "Reused ticket.";
-		case VerifyTicketResult::InvalidSignatureLength:
-			return "Invalid signature length.";
-		case VerifyTicketResult::InvalidSignature:
-			return "Invalid ticket signature.";
-		case VerifyTicketResult::Success:
-			return "";
-	}
-
-	return "";
-}
-
-VerifyTicketResult VerifyTicket(const std::string& guid, const std::string& ticket, const Botan::RSA_PublicKey& pk)
-{
-	auto ticketData = Botan::base64_decode(ticket);
-
-	// validate ticket length
-	if (ticketData.size() < 20 + 4 + 128)
-	{
-		return VerifyTicketResult::InvalidLength;
-	}
-
-	uint32_t length = *(uint32_t*)&ticketData[0];
-
-	if (length != 16)
-	{
-		return VerifyTicketResult::InvalidLength2;
-	}
-
-	uint64_t ticketGuid = *(uint64_t*)&ticketData[4];
-	uint64_t ticketExpiry = *(uint64_t*)&ticketData[12];
-
-	// check expiration
-
-	// get UTC time
-	std::time_t timeVal;
-	std::time(&timeVal);
-
-	// verify
-	if (ticketExpiry < timeVal)
-	{
-		console::DPrintf("server", "Connecting player: ticket expired\n");
-		return VerifyTicketResult::Expired;
-	}
-
-	// check the GUID
-	uint64_t realGuid = strtoull(guid.c_str(), nullptr, 10);
-
-	if (realGuid != ticketGuid)
-	{
-		console::DPrintf("server", "Connecting player: ticket GUID not matching\n");
-		return VerifyTicketResult::MismatchingGUID;
-	}
-
-	{
-		std::unique_lock<std::mutex> _(g_ticketMapMutex);
-
-		if (g_ticketList.find({ ticketExpiry, ticketGuid }) != g_ticketList.end())
-		{
-			return VerifyTicketResult::Reused;
-		}
-
-		if (msec() > g_nextTicketGc)
-		{
-			g_ticketList.clear();
-			g_nextTicketGc = msec() + std::chrono::minutes(30);
-		}
-
-		g_ticketList.insert({ ticketExpiry, ticketGuid });
-	}
-
-	// check the RSA signature
-	uint32_t sigLength = *(uint32_t*)&ticketData[length + 4];
-
-	if (sigLength != 128)
-	{
-		return VerifyTicketResult::InvalidSignatureLength;
-	}
-
-	Botan::SHA_160 hashFunction;
-	auto result = hashFunction.process(&ticketData[4], length);
-
-	std::vector<uint8_t> msg(result.size() + 1);
-	msg[0] = 2;
-	memcpy(&msg[1], &result[0], result.size());
-
-	auto signer = std::make_unique<Botan::PK_Verifier>(pk, "EMSA_PKCS1(SHA-1)");
-
-	bool valid = signer->verify_message(msg.data(), msg.size(), &ticketData[length + 4 + 4], sigLength);
-
-	if (!valid)
-	{
-		return VerifyTicketResult::InvalidSignature;
-	}
-
-	return VerifyTicketResult::Success;
-}
-
 struct TicketData
 {
 	std::optional<std::array<uint8_t, 20>> entitlementHash;
 	std::optional<std::string> extraJson;
 };
-
-std::optional<TicketData> VerifyTicketEx(const std::string& ticket, const Botan::RSA_PublicKey& pk)
-{
-	auto ticketData = Botan::base64_decode(ticket);
-
-	// validate ticket length
-	if (ticketData.size() < 20 + 4 + 128 + 4)
-	{
-		return {};
-	}
-
-	size_t length = static_cast<size_t>(*(uint32_t*)&ticketData[20 + 4 + 128]);
-
-	// validate full length
-	if (ticketData.size() < 20 + 4 + 128 + 4 + length)
-	{
-		return {};
-	}
-
-	// copy extra data
-	std::vector<uint8_t> extraData(length);
-
-	if (!extraData.empty())
-	{
-		memcpy(&extraData[0], &ticketData[20 + 4 + 128 + 4], length);
-	}
-
-	// check the RSA signature
-	uint32_t sigLength = *(uint32_t*)&ticketData[20 + 4 + 128 + 4 + length];
-
-	if (sigLength != 128)
-	{
-		return {};
-	}
-
-	Botan::SHA_160 hashFunction;
-	auto result = hashFunction.process(&ticketData[4], ticketData.size() - 128 - 4 - 4);
-
-	std::vector<uint8_t> msg(result.size() + 1);
-	msg[0] = 2;
-	memcpy(&msg[1], &result[0], result.size());
-
-	auto signer = std::make_unique<Botan::PK_Verifier>(pk, "EMSA_PKCS1(SHA-1)");
-
-	bool valid = signer->verify_message(msg.data(), msg.size(), &ticketData[length + 4 + 4 + 128 + 20 + 4], sigLength);
-
-	if (!valid)
-	{
-		console::DPrintf("server", "Connecting player: ticket RSA signature not matching\n");
-		return {};
-	}
-
-	TicketData outData;
-
-	if (length >= 20)
-	{
-		std::array<uint8_t, 20> entitlementHash;
-		memcpy(entitlementHash.data(), &extraData[0], entitlementHash.size());
-
-		outData.entitlementHash = entitlementHash;
-	}
-
-	if (length >= 24)
-	{
-		uint32_t extraJsonLength = *(uint32_t*)&extraData[20];
-
-		if (length >= (24 + extraJsonLength))
-		{
-			outData.extraJson = std::string{ (char*)&extraData[24], extraJsonLength };
-		}
-	}
-
-	return outData;
-}
 }
 
 extern std::shared_ptr<ConVar<bool>> g_oneSyncVar;
@@ -498,23 +197,15 @@ static InitFunction initFunction([]()
 				else 
 				{
 					json endpoints;
-					for (auto item :
-						fx::GetIteratorView(
-							std::make_pair(
-								boost::algorithm::make_split_iterator(
-									endpointList,
-									boost::algorithm::token_finder(
-										boost::algorithm::is_space(),
-										boost::algorithm::token_compress_on
-									)
-								),
-								boost::algorithm::split_iterator<std::string::iterator>()
-							)
-						)
-					)
+					// MINIMAL_MP: replaced folly::range with simple boost split
+					std::vector<std::string> parts;
+					boost::algorithm::split(parts, endpointList, boost::algorithm::is_space(), boost::algorithm::token_compress_on);
+					for (const auto& part : parts)
 					{
-						auto endpoint = folly::range(&*item.begin(), &*item.end());
-						endpoints += endpoint;
+						if (!part.empty())
+						{
+							endpoints += part;
+						}
 					}
 					cb(endpoints);
 				}
@@ -634,68 +325,9 @@ static InitFunction initFunction([]()
 
 			TicketData ticketData;
 
-			if (!lanVar->GetValue())
-			{
-				auto ticketIt = postMap.find("cfxTicket2");
-
-				if (ticketIt == postMap.end())
-				{
-					sendError("No authentication ticket was specified.");
-					return;
-				}
-
-				auto requestedPublicKey = GetPublicKey();
-				
-				if (!requestedPublicKey)
-				{
-					sendError("public key request failed.");
-					return;
-				}
-
-				try
-				{
-					VerifyTicketResult verifyResult = VerifyTicket(guid, ticketIt->second, requestedPublicKey.value());
-					
-					if (verifyResult == VerifyTicketResult::InvalidSignature)
-					{
-						// expire the public key if the signature is wrong in case the key got rotated
-						if (ExpirePublicKey())
-						{
-							// request a new key if the expiry was successful
-							requestedPublicKey = GetPublicKey();
-				
-							if (!requestedPublicKey)
-							{
-								sendError("public key request failed (2).");
-								return;
-							}
-
-							verifyResult = VerifyTicket(guid, ticketIt->second, requestedPublicKey.value());
-						}
-					}
-
-					if (verifyResult != VerifyTicketResult::Success)
-					{
-						sendError(fmt::sprintf("Ticket authorization failed. %s", GetVerifyTicketErrorString(verifyResult)));
-						return;
-					}
-
-					auto optionalTicket = VerifyTicketEx(ticketIt->second, requestedPublicKey.value());
-
-					if (!optionalTicket)
-					{
-						sendError("Ticket authorization failed. (2)");
-						return;
-					}
-
-					ticketData = *optionalTicket;
-				}
-				catch (const std::exception& e)
-				{
-					sendError(fmt::sprintf("Parsing error while verifying ticket. %s", e.what()));
-					return;
-				}
-			}
+			// MINIMAL_MP: Always operate in LAN mode - no ticket verification
+			// Original code checked lanVar and verified cfxTicket2 via Botan RSA.
+			// We skip all of that for our minimal multiplayer platform.
 
 			std::string token = boost::uuids::to_string(boost::uuids::basic_random_generator<boost::random_device>()());
 
@@ -782,42 +414,8 @@ static InitFunction initFunction([]()
 					hash[10], hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]));
 			}
 
-			bool gameNameMatch = false;
-
-			if (ticketData.extraJson)
-			{
-				try
-				{
-					json json = json::parse(*ticketData.extraJson);
-
-					if (json["gn"].is_string())
-					{
-						auto sentGameName = json["gn"].get<std::string>();
-
-						if (sentGameName == intendedGameName)
-						{
-							gameNameMatch = true;
-						}
-					}
-				}
-				catch (std::exception& e)
-				{
-
-				}
-
-				client->SetData("entitlementJson", *ticketData.extraJson);
-			}
-
-			if (lanVar->GetValue())
-			{
-				gameNameMatch = true;
-			}
-
-			if (!gameNameMatch)
-			{
-				sendError("CitizenFX ticket authorization failed. (3)");
-				return;
-			}
+			// MINIMAL_MP: Always allow game name match in LAN mode
+			bool gameNameMatch = true;
 
 			client->Touch();
 
