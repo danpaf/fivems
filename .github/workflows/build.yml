@@ -15,6 +15,15 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
+      - name: Install Windows SDK 10.0.22000.0
+        shell: pwsh
+        run: |
+          $url = "https://go.microsoft.com/fwlink/?linkid=2164145"
+          $installer = "$env:TEMP\winsdksetup.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -Wait -FilePath $installer -ArgumentList "/features OptionId.DesktopCPPx64 /quiet /norestart"
+          Write-Host "Windows SDK 10.0.22000.0 installed"
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -24,13 +33,13 @@ jobs:
 
       - name: Build server
         working-directory: code
-        run: msbuild build\server\CitizenMP.sln /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+        run: msbuild build\server\windows\CitizenMP.sln /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 
       - name: Package server
         run: |
           mkdir SolarServer
-          copy code\build\server\bin\Release\*.exe SolarServer\
-          copy code\build\server\bin\Release\*.dll SolarServer\
+          copy code\build\server\windows\bin\Release\*.exe SolarServer\
+          copy code\build\server\windows\bin\Release\*.dll SolarServer\
           copy data\server_minimal\components.json SolarServer\
           copy data\server_minimal\server.cfg SolarServer\
           copy data\server_minimal\launch_server.bat SolarServer\
@@ -50,6 +59,15 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 1
+
+      - name: Install Windows SDK 10.0.22000.0
+        shell: pwsh
+        run: |
+          $url = "https://go.microsoft.com/fwlink/?linkid=2164145"
+          $installer = "$env:TEMP\winsdksetup.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -Wait -FilePath $installer -ArgumentList "/features OptionId.DesktopCPPx64 /quiet /norestart"
+          Write-Host "Windows SDK 10.0.22000.0 installed"
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
